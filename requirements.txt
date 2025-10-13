@@ -1,0 +1,8 @@
+fastapi
+mangum
+boto3
+pypdf
+numpy
+chromadb
+openai
+python-multipart
