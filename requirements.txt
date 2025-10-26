@@ -2,7 +2,6 @@ fastapi
 mangum
 boto3
 pypdf
-numpy
-chromadb
 openai
+numpy
 python-multipart
