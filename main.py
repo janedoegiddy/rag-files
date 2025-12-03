@@ -23,8 +23,8 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD")
 DOCUMENTS_S3_PREFIX = "documents/"
 LOGS_S3_PREFIX = "logs/"
 
-s3_client = boto3.client("s3")
-ssm_client = boto3.client("ssm")
+s3_client = boto3.client("s3", region_name=os.environ.get("AWS_REGION"))
+ssm_client = boto3.client("ssm", region_name=os.environ.get("AWS_REGION"))
 
 # --- GEMINI CLIENT SETUP ---
 def get_gemini_api_key():
