@@ -6,3 +6,4 @@ boto3
 pgvector
 psycopg2-binary
 google-generativeai
+python-multipart
