@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  # The FastAPI Application Service
+  app:
+    build: .
+    ports:
+      - "80:8000"  # Map port 80 on the host to 8000 in the container
+    restart: always
+    env_file:
+      - .env      # Loads production environment variables

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # The FastAPI Application Service
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app  # Mounts local code into the container for live-reloading during development
+    env_file:
+      - .env  # Loads environment variables from a .env file
+    depends_on:
+      - db    # Ensures the database container starts before the app
+
+  # The PostgreSQL Database Service with pgvector
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432" # Expose db port to the host machine for easy access
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/ # Persist database data
+
+volumes:
+  postgres_data: # Defines the named volume for data persistence

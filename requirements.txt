@@ -1,8 +1,8 @@
 fastapi
-mangum
-boto3
+uvicorn
+pydantic
 pypdf
-numpy
-chromadb
-openai
-python-multipart
+boto3
+pgvector
+psycopg2-binary
+google-generativeai

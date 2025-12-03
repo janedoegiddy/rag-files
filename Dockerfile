@@ -1,20 +1,20 @@
-# Use the official AWS Lambda Python base image. It includes the Lambda Runtime Interface Client.
-FROM public.ecr.aws/lambda/python:3.12
+# Use an official Python runtime as a parent image
+FROM python:3.12-slim
 
 # Set the working directory in the container
-WORKDIR /var/task
+WORKDIR /app
 
-# Copy requirements.txt first to leverage Docker's layer caching.
-# If requirements.txt hasn't changed, this layer won't be rebuilt.
-COPY requirements.txt ./
+# Copy the requirements file into the container at /app
+COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# Copy your application code
-COPY app.py ./
+# Copy the rest of the application code into the container
+COPY . .
 
-# Set the command to your handler.
-# The format is "<script_name>.<handler_function_name>"
-# In our case, it's the `handler` object created by Mangum in `app.py`.
-CMD [ "app.handler" ]
+# Expose the port the app runs on
+EXPOSE 8000
+
+# Command to run the application using uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
