@@ -1,0 +1,10 @@
+
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE documents (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    chunk_text TEXT NOT NULL,
+    embedding VECTOR(768)
+);

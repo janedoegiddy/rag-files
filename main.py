@@ -30,14 +30,12 @@ ssm_client = boto3.client("ssm", region_name=os.environ.get("AWS_REGION"))
 def get_gemini_api_key():
     """Fetches the Gemini API Key from SSM or falls back to an environment variable."""
     try:
-        # First, try to get the key from AWS SSM (for production on EC2)
         print(f"Attempting to fetch Gemini API key from SSM parameter: {SSM_PARAM_NAME_GEMINI}")
         response = ssm_client.get_parameter(Name=SSM_PARAM_NAME_GEMINI, WithDecryption=True)
         print("Successfully fetched API key from SSM.")
         return response['Parameter']['Value']
     except Exception as e:
         print(f"Could not retrieve API key from SSM: {e}")
-        # If SSM fails, fall back to environment variable (for local Docker testing)
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
             print("Falling back to GEMINI_API_KEY environment variable.")
@@ -49,11 +47,14 @@ def get_gemini_api_key():
 try:
     gemini_api_key = get_gemini_api_key()
     genai.configure(api_key=gemini_api_key)
-    embedding_model = "text-embedding-004"  # Google's embedding model
-    llm_model_name = "gemini-1.5-pro-latest"      # Google's powerful model
+    embedding_model = "text-embedding-004"
+    # --- CHANGE THIS LINE ---
+    # Instead of a string, create the model object directly, using a standard, available model name.
+    llm_model = genai.GenerativeModel("gemini-2.5-flash-lite")
     print("Google Gemini client configured successfully.")
 except Exception as e:
-    llm_model_name = None
+    # --- AND THIS LINE ---
+    llm_model = None # Changed from llm_model_name to llm_model
     print(f"FATAL: Failed to configure Gemini client: {e}")
 
 
@@ -69,7 +70,7 @@ def get_db_connection():
     register_vector(conn)
     return conn
 
-# --- HELPER FUNCTIONS ---
+# --- HELPER FUNCTIONS (UNCHANGED) ---
 def simple_text_splitter(text: str, chunk_size: int = 1000, chunk_overlap: int = 100) -> List[str]:
     if len(text) <= chunk_size: return [text]
     chunks, start = [], 0
@@ -118,7 +119,7 @@ TEMP_DIR = "/tmp/uploads"
 if not os.path.exists(TEMP_DIR):
     os.makedirs(TEMP_DIR)
 
-app = FastAPI(title="RAG API (Gemini 1.5 Pro + pgvector)")
+app = FastAPI(title="RAG API (Gemini Pro + pgvector)")
 
 class QuestionRequest(BaseModel):
     user_id: str
@@ -179,7 +180,6 @@ async def ask_question(request: QuestionRequest):
 
         conn = get_db_connection()
         cur = conn.cursor()
-        # The <=> operator calculates the cosine distance for similarity search
         cur.execute(
             "SELECT chunk_text FROM documents WHERE user_id = %s ORDER BY embedding <=> %s LIMIT 5",
             (request.user_id, str(question_embedding))
@@ -193,8 +193,9 @@ async def ask_question(request: QuestionRequest):
 
         print("Generating answer with Gemini...")
         prompt = build_prompt(request.question, relevant_chunks, request.chat_history)
-        model = genai.GenerativeModel(llm_model_name)
-        llm_response = model.generate_content(prompt)
+        # --- CHANGE THIS BLOCK ---
+        # Use the globally defined llm_model object directly.
+        llm_response = llm_model.generate_content(prompt)
         answer = llm_response.text
 
         log_conversation(request.user_id, request.question, answer)
