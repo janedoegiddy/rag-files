@@ -5,5 +5,5 @@ pypdf
 boto3
 pgvector
 psycopg2-binary
-openai
+google-generativeai
 python-multipart
