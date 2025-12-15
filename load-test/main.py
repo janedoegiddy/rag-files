@@ -9,9 +9,12 @@ from rich.table import Table
 # --- SCRIPT CONFIGURATION ---
 
 # !!! REPLACE THIS with your ALB's DNS Name !!!
-ALB_DNS_NAME = "http://rag-app-alb-1234567890.us-east-1.elb.amazonaws.com"
-# The endpoint we are testing
-ENDPOINT_URL = f"{ALB_DNS_NAME}/ask"
+# The base URL is the same for users and the test.
+ALB_DNS_NAME = "http://your-rag-app-alb-dns-name.us-east-1.elb.amazonaws.com"
+
+# The endpoint we are testing now includes the path for the backend.
+# The ALB will route requests with '/api/' to the backend container.
+ENDPOINT_URL = f"{ALB_DNS_NAME}/api/ask"
 
 # The JSON payload to send with each request
 REQUEST_PAYLOAD = {
@@ -37,6 +40,9 @@ async def send_request(client: httpx.AsyncClient, stage_end_time: float):
 
     start_time = time.time()
     try:
+        # We need to tell the ALB that this request should go to the backend.
+        # We do this by adding a path prefix. The ALB rule will see '/api/ask'
+        # and route it correctly to the 'app' service on port 8000.
         response = await client.post(ENDPOINT_URL, json=REQUEST_PAYLOAD, timeout=REQUEST_TIMEOUT)
         latency = time.time() - start_time
 
@@ -64,7 +70,6 @@ async def run_stage(concurrency: int):
             tasks = [send_request(client, stage_end_time) for _ in range(concurrency)]
             results = await asyncio.gather(*tasks)
             all_results.extend([r for r in results if r is not None])
-            # Small sleep to prevent overwhelming the local machine's event loop
             await asyncio.sleep(0.01)
 
     return all_results
@@ -113,7 +118,7 @@ async def main():
         
         failure_rate = process_results(results, concurrency)
 
-        if failure_rate > 5.0: # If more than 5% of requests fail, we've found the breaking point
+        if failure_rate > 5.0:
             console.print(f"\n[bold red]BREAKING POINT DETECTED![/bold red]")
             console.print(f"System became unstable at ~{concurrency} concurrent requests.")
             break

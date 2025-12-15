@@ -1,11 +1,28 @@
 version: '3.8'
 
 services:
-  # The FastAPI Application Service
+  # The FastAPI Backend Service (internally called 'app')
   app:
-    build: .
-    ports:
-      - "80:8000"  # Map port 80 on the host to 8000 in the container
+    build:
+      context: . # Assumes this file is in the root directory
+      dockerfile: Dockerfile
+    # No 'ports' section - it's not exposed to the internet, only to the frontend.
+    # The container still listens on port 8000 internally.
     restart: always
     env_file:
       - .env      # Loads production environment variables
+
+  # The Streamlit Frontend Service
+  frontend:
+    build:
+      context: ./frontend # Path to the frontend directory
+      dockerfile: Dockerfile
+    ports:
+      - "80:8501"  # Map port 80 on the host/ALB to the frontend's port 8501
+    restart: always
+    environment:
+      # This is the key: The frontend uses the backend's service name ('app')
+      # to find it within the internal Docker network.
+      - BACKEND_URL=http://app:8000
+    depends_on:
+      - app # Ensures the backend starts before the frontend
