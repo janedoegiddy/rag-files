@@ -9,43 +9,33 @@ from rich.table import Table
 # --- SCRIPT CONFIGURATION ---
 
 # !!! REPLACE THIS with your ALB's DNS Name !!!
-# The base URL is the same for users and the test.
-ALB_DNS_NAME = "http://your-rag-app-alb-dns-name.us-east-1.elb.amazonaws.com"
+# This now points to the root of your public-facing application.
+ALB_DNS_NAME = "http://rag-app-alb-1234567890.us-east-1.elb.amazonaws.com"
+ENDPOINT_URL = ALB_DNS_NAME  # We are hitting the main frontend page
 
-# The endpoint we are testing now includes the path for the backend.
-# The ALB will route requests with '/api/' to the backend container.
-ENDPOINT_URL = f"{ALB_DNS_NAME}/api/ask"
+# --- LOAD TEST PARAMETERS (can remain the same) ---
+START_CONCURRENCY = 10
+STEP_CONCURRENCY = 10
+STAGE_DURATION_SECONDS = 60
+REQUEST_TIMEOUT = 30.0
 
-# The JSON payload to send with each request
-REQUEST_PAYLOAD = {
-    "user_id": "stress-test-user",
-    "question": "What is the main idea behind the theory of relativity?",
-    "chat_history": []
-}
-
-# --- LOAD TEST PARAMETERS ---
-START_CONCURRENCY = 10      # Number of concurrent requests to start with
-STEP_CONCURRENCY = 10       # How many concurrent requests to add in each stage
-STAGE_DURATION_SECONDS = 60 # How long to run each stage
-REQUEST_TIMEOUT = 30.0      # How long to wait for a single request before it fails
-
-# --- SCRIPT LOGIC (No need to edit below this line) ---
+# --- SCRIPT LOGIC ---
 
 console = Console()
 
 async def send_request(client: httpx.AsyncClient, stage_end_time: float):
-    """Sends a single request and returns its result."""
+    """Sends a single GET request to the frontend."""
     if time.time() > stage_end_time:
-        return None # Stage is over
+        return None
 
     start_time = time.time()
     try:
-        # We need to tell the ALB that this request should go to the backend.
-        # We do this by adding a path prefix. The ALB rule will see '/api/ask'
-        # and route it correctly to the 'app' service on port 8000.
-        response = await client.post(ENDPOINT_URL, json=REQUEST_PAYLOAD, timeout=REQUEST_TIMEOUT)
+        # CHANGE: Use .get() and remove the json payload.
+        # We are simply requesting the main Streamlit page, not sending data.
+        response = await client.get(ENDPOINT_URL, timeout=REQUEST_TIMEOUT)
         latency = time.time() - start_time
 
+        # A 200 OK from the frontend means it successfully served the page.
         if 200 <= response.status_code < 300:
             return ("success", latency, response.status_code)
         else:
@@ -58,6 +48,7 @@ async def send_request(client: httpx.AsyncClient, stage_end_time: float):
         latency = time.time() - start_time
         return ("failure", latency, str(type(e).__name__))
 
+# --- The rest of the script (run_stage, process_results, main) can remain exactly the same ---
 async def run_stage(concurrency: int):
     """Runs a single load test stage with a given concurrency."""
     console.print(f"\n[bold cyan]Running stage with {concurrency} concurrent requests for {STAGE_DURATION_SECONDS} seconds...[/bold cyan]")
@@ -118,7 +109,7 @@ async def main():
         
         failure_rate = process_results(results, concurrency)
 
-        if failure_rate > 5.0:
+        if failure_rate > 5.0: 
             console.print(f"\n[bold red]BREAKING POINT DETECTED![/bold red]")
             console.print(f"System became unstable at ~{concurrency} concurrent requests.")
             break
